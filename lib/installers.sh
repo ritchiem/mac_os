@@ -151,16 +151,111 @@ install_dmg_app() {
 }
 export -f install_dmg_app
 
-# Installs a package via a DMG file.
+# Runs an application installer enclosed in a DMG file.
 # Parameters:
 # $1 = The URL.
 # $2 = The mount path.
+# $3 = The installer name.
+# $4 = The application name.
+install_dmg_installer() {
+  local url="$1"
+  local mount_point="/Volumes/$2"
+  local installer_name="$3"
+  local app_name="$4"
+  local install_path=$(get_install_path "$app_name")
+  local download_file="download.dmg"
+
+  if [[ ! -e "$install_path" ]]; then
+    download_installer "$url" "$download_file"
+    mount_image "$MAC_OS_WORK_PATH/$download_file"
+    
+    printf "Running installer: $installer_name...\n"
+	
+	#Block for processing of installer
+	open -W "$mount_point/$installer_name"
+	unmount_image "$mount_point"
+    printf "Installed: $app_name.\n"
+    verify_application "$app_name"
+	
+	#Open in background for uninterrupted mode
+	#open -g $mount_point/$installer_name	
+  fi
+}
+export -f install_dmg_installer
+
+# Runs an application installer enclosed in a zip file.
+# Parameters:
+# $1 = The URL.
+# $2 = The installer name.
 # $3 = The application name.
+install_zip_installer() {
+  local url="$1"
+  local installer_name="$2"
+  local app_name="$3"
+  local install_path=$(get_install_path "$app_name")
+  local download_file="download.dmg"
+
+  if [[ ! -e "$install_path" ]]; then
+    download_installer "$url" "$download_file"
+	
+    (
+      printf "Preparing...\n"
+      cd "$MAC_OS_WORK_PATH"
+      unzip -q "$download_file"
+    )
+		
+    printf "Running installer: $installer_name...\n"
+	#Block for processing of installer
+	open -W "$installer_name"
+    printf "Installed: $app_name.\n"
+    verify_application "$app_name"
+	
+	#Open in background for uninterrupted mode
+	#open -g "$installer_name"
+  fi
+}
+export -f install_zip_installer
+
+# Runs a cmd on the output of a zip file.
+# Parameters:
+# $1 = The URL.
+# $2 = The installer cmd.
+# $3 = The installation check path.
+install_zip_install_cmd() {
+  local url="$1"
+  local installer_cmd="$2"
+  local install_path="$3"
+  local download_file="download.zip"
+
+  if [[ ! -e "$install_path" ]]; then
+    download_installer "$url" "$download_file"
+	
+    (
+      printf "Preparing...\n"
+      cd "$MAC_OS_WORK_PATH"
+      unzip -q "$download_file"
+    )
+		
+    printf "Running installer: $installer_cmd...\n"
+
+	sudo $MAC_OS_WORK_PATH/$installer_cmd
+    printf "Installed: $app_name.\n"
+    verify_application "$app_name"
+  fi
+}
+export -f install_zip_install_cmd
+
+# Installs a package from a DMG file, with an installation check.
+# Parameters:
+# $1 = The URL.
+# $2 = The mount path.
+# $3 = The intaller name.
+# $4 = Installation check path
 install_dmg_pkg() {
   local url="$1"
   local mount_point="/Volumes/$2"
   local app_name="$3"
-  local install_path=$(get_install_path "$app_name")
+  local install_path="$4"
   local download_file="download.dmg"
 
   if [[ ! -e "$install_path" ]]; then
@@ -173,6 +268,26 @@ install_dmg_pkg() {
   fi
 }
 export -f install_dmg_pkg
+
+
+# Installs a package downloaded straight from the internet..
+# Parameters:
+# $1 = The URL.
+# $2 = The application name.
+install_raw_pkg() {
+  local url="$1"
+  local app_name="$2"
+  local install_path=$(get_install_path "$app_name") 
+  local download_file="download.pkg"
+
+  if [[ ! -e "$install_path" ]]; then
+    download_installer "$url" "$download_file"
+    install_pkg "$MAC_OS_WORK_PATH/$download_file" "$app_name"
+    printf "Installed: $app_name.\n"
+    verify_application "$app_name"
+  fi
+}
+export -f install_raw_pkg
 
 # Installs an application via a zip file.
 # Parameters:
