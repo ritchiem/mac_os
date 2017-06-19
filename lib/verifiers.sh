@@ -37,6 +37,12 @@ verify_homebrews() {
         application="mercurial"
       fi
 
+      # Exception: application contains / e.g. "homebrew/completions/docker-completion" 
+	  # it will be listed under last path part "docker-completion"
+      if [[ "$application" == *"/"* ]]; then
+		application="$(basename $application)"	
+      fi
+
       verify_homebrew "$application" "${applications[*]}"
     fi
   done < "$MAC_OS_CONFIG_PATH/bin/install_homebrew"
